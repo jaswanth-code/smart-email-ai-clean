@@ -2,8 +2,6 @@ import streamlit as st
 import pickle
 import os.path
 
-from winotify import Notification
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -22,19 +20,6 @@ vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
 st.title("Smart Email AI")
 
 st.write("AI-Based Smart Email Notification System")
-
-
-# Windows notification function
-def send_notification(title, message):
-
-    toast = Notification(
-        app_id="Smart Email AI",
-        title=title,
-        msg=message,
-        duration="short"
-    )
-
-    toast.show()
 
 
 # Predict email category
@@ -200,7 +185,6 @@ if st.button("Login With Gmail"):
             if header['name'] == 'Subject':
 
                 subject = header['value']
-
         # Predict category
         prediction = predict_email(subject)
 
@@ -212,9 +196,3 @@ if st.button("Login With Gmail"):
         else:
 
             st.success(f"{prediction}: {subject}")
-
-            # Windows Notification
-            send_notification(
-                "Important Email Detected",
-                f"{prediction}: {subject}"
-            )
