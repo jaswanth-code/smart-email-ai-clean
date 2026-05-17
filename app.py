@@ -1,14 +1,6 @@
 import streamlit as st
 import pickle
-import os.path
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-
-# Gmail API permission
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+from streamlit_oauth import OAuth2Component
 
 # Load ML model
 model = pickle.load(open("model.pkl", "rb"))
@@ -16,13 +8,43 @@ model = pickle.load(open("model.pkl", "rb"))
 # Load vectorizer
 vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
 
-# Streamlit UI
+# ---------------- GOOGLE OAUTH ---------------- #
+
+CLIENT_ID = "28501079710-iskm3ka55tf8617nk9jhpcpu2jr754ts.apps.googleusercontent.com"
+
+CLIENT_SECRET = "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"
+
+AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
+
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+
+REDIRECT_URI = "https://smart-email-ai-clean.streamlit.app/component/streamlit_oauth.authorize_button/index.html"
+
+oauth2 = OAuth2Component(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    AUTHORIZE_URL,
+    TOKEN_URL,
+)
+
+# ---------------- STREAMLIT UI ---------------- #
+
 st.title("Smart Email AI")
 
-st.write("AI-Based Smart Email Notification System")
+st.write("AI-Based Smart Email Classification System")
 
+# ---------------- LOGIN BUTTON ---------------- #
 
-# Predict email category
+result = oauth2.authorize_button(
+    name="Login with Google",
+    icon="https://www.google.com/favicon.ico",
+    redirect_uri=REDIRECT_URI,
+    scope="https://www.googleapis.com/auth/gmail.readonly",
+    key="google",
+)
+
+# ---------------- EMAIL PREDICTION ---------------- #
+
 def predict_email(text):
 
     text = text.lower()
@@ -105,94 +127,23 @@ def predict_email(text):
         if word in text:
             return "NOT IMPORTANT"
 
-    # ML fallback
+    # ML prediction fallback
     text_vectorized = vectorizer.transform([text])
 
     prediction = model.predict(text_vectorized)
 
     return prediction[0]
 
+# ---------------- AFTER LOGIN ---------------- #
 
-# Gmail Login Function
-def gmail_login():
+if result and "token" in result:
 
-    creds = None
+    st.success("Google Login Successful")
 
-    if os.path.exists('token.json'):
+    email_subject = st.text_input("Enter Email Subject")
 
-        creds = Credentials.from_authorized_user_file(
-            'token.json',
-            SCOPES
-        )
+    if st.button("Predict"):
 
-    if not creds or not creds.valid:
+        prediction = predict_email(email_subject)
 
-        if creds and creds.expired and creds.refresh_token:
-
-            creds.refresh(Request())
-
-        else:
-
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json',
-                SCOPES
-            )
-
-            creds = flow.run_local_server(port=0)
-
-        with open('token.json', 'w') as token:
-
-            token.write(creds.to_json())
-
-    return creds
-
-
-# Gmail Login Button
-if st.button("Login With Gmail"):
-
-    st.success("Gmail Authentication Started")
-
-    creds = gmail_login()
-
-    service = build('gmail', 'v1', credentials=creds)
-
-    # Read Gmail
-    results = service.users().messages().list(
-        userId='me',
-        q='category:primary OR category:updates',
-        maxResults=10
-    ).execute()
-
-    messages = results.get('messages', [])
-
-    st.subheader("Latest Email Predictions")
-
-    # Process emails
-    for message in messages:
-
-        msg = service.users().messages().get(
-            userId='me',
-            id=message['id']
-        ).execute()
-
-        headers = msg['payload']['headers']
-
-        subject = "No Subject"
-
-        # Extract subject
-        for header in headers:
-
-            if header['name'] == 'Subject':
-
-                subject = header['value']
-        # Predict category
-        prediction = predict_email(subject)
-
-        # Display output
-        if prediction == "NOT IMPORTANT":
-
-            st.info(f"{prediction}: {subject}")
-
-        else:
-
-            st.success(f"{prediction}: {subject}")
+        st.success(f"Prediction: {prediction}")
