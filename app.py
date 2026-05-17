@@ -18,7 +18,7 @@ AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 
-REDIRECT_URI = "https://smart-email-ai-clean.streamlit.app/component/streamlit_oauth.authorize_button/index.html"
+REDIRECT_URI = "https://smart-email-ai-clean-nwat7wpskzq83njofjgj4x.streamlit.app/component/streamlit_oauth.authorize_button/index.html"
 
 oauth2 = OAuth2Component(
     CLIENT_ID,
